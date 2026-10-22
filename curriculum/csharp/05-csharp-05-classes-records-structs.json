@@ -1,0 +1,88 @@
+{
+  "skill": "csharp",
+  "recallQuestions": [],
+  "id": "csharp-05-classes-records-structs",
+  "topic": "objects",
+  "order": 5,
+  "title": "Classes, records, and structs: choosing the right shape",
+  "summary": "Model data with the semantics you actually want: identity, value equality, or a small copyable value.",
+  "estimatedMinutes": 40,
+  "theory": "\nC# gives you three main ways to define a type. The differences are semantic, not cosmetic.\n\n**Classes** have reference identity. Two instances with equal field values are still different objects unless you override equality. Classes support inheritance and mutable state:\n\n```csharp\npublic sealed class Lesson\n{\n    public string Id { get; }\n    public string Title { get; set; }\n\n    public Lesson(string id, string title)\n    {\n        Id = id;\n        Title = title;\n    }\n}\n```\n\n**Records** are designed for data. A `record` (reference type) or `record struct` (value type) gets value equality, a readable `ToString`, and non-destructive mutation with `with`:\n\n```csharp\npublic sealed record LessonNote(string LessonId, string Body, int Confidence);\n\nvar first = new LessonNote(\"arrays\", \"Indexing is O(1).\", 4);\nvar revised = first with { Confidence = 5 };\n\nConsole.WriteLine(first == revised); // False, confidence differs\n```\n\nPositional records generate init-only properties and a constructor. They are immutable by default, which makes them safe to pass around and easy to reason about.\n\n**Structs** are value types. Assigning or passing one copies it. They are a good fit for small, short-lived values such as coordinates, money amounts with an explicit currency, or a wrapper around a single primitive. They are a poor fit for large objects or types with reference identity. Keep them small and preferably immutable.\n\nA useful decision guide:\n\n- Does the thing have an identity that persists while its properties change? Use a **class**.\n- Is it a snapshot of data where two equal values should be interchangeable? Use a **record**.\n- Is it a tiny value with no identity, copied often, and cheap to copy? Consider a **struct** (or `record struct`).\n\nProperties can be `init`-only, which allows object-initializer construction but prevents later mutation:\n\n```csharp\npublic sealed class Track\n{\n    public required string SkillId { get; init; }\n    public int DailyMinutes { get; init; } = 30;\n}\n```\n\n`required` makes the compiler enforce that callers set `SkillId` during initialization. Both features reduce invalid objects without ceremony.\n",
+  "workedExample": {
+    "title": "Class identity vs record equality",
+    "markdown": "\nCompare two types that look similar but behave differently when compared.\n\n```csharp\npublic sealed class NamedClass\n{\n    public string Name { get; init; } = \"\";\n}\n\npublic sealed record NamedRecord(string Name);\n\nvar classA = new NamedClass { Name = \"Ada\" };\nvar classB = new NamedClass { Name = \"Ada\" };\n\nvar recordA = new NamedRecord(\"Ada\");\nvar recordB = new NamedRecord(\"Ada\");\n```\n",
+    "steps": [
+      "`classA` and `classB` are two separate objects. `NamedClass` does not override `Equals`, so `classA == classB` is `false`: reference identity is compared.",
+      "`recordA` and `recordB` have the same declared type and equal property values. Record equality is value-based, so `recordA == recordB` is `true`.",
+      "`recordA with { Name = \"Grace\" }` creates a new record with the changed property. The original is untouched.",
+      "If the class needs value equality, you must implement `Equals` and `GetHashCode` consistently, or switch to a record. Implementing equality by hand on a mutable class is error-prone.",
+      "Choose based on meaning: a database row with a stable ID is often a class; a lesson note snapshot is naturally a record."
+    ]
+  },
+  "task": {
+    "title": "Model a lesson note as a record",
+    "prompt": "\nCreate a `record` named `LessonNote` with three positional values:\n\n- `LessonId` (string)\n- `Body` (string)\n- `Confidence` (int, 1 to 5)\n\nThen write a method `WithConfidence(LessonNote note, int confidence)` that returns a new note with the confidence replaced, without mutating the original.\n",
+    "language": "csharp",
+    "starterCode": "public sealed record LessonNote(string LessonId, string Body, int Confidence);\n\npublic static LessonNote WithConfidence(LessonNote note, int confidence)\n{\n    // Return a copy with the new confidence.\n    throw new NotImplementedException();\n}",
+    "solution": "public sealed record LessonNote(string LessonId, string Body, int Confidence);\n\npublic static LessonNote WithConfidence(LessonNote note, int confidence)\n{\n    if (confidence is < 1 or > 5)\n        throw new ArgumentOutOfRangeException(nameof(confidence));\n    return note with { Confidence = confidence };\n}",
+    "requirements": [
+      "The original note is unchanged.",
+      "The returned note has the same lesson id and body.",
+      "Invalid confidence values are rejected."
+    ]
+  },
+  "explainPrompt": "When would you choose a class instead of a record for the same data? Describe a concrete case where value equality would be wrong.",
+  "checkQuestions": [
+    {
+      "prompt": "What does `with` do on a record?",
+      "options": [
+        "Mutates the existing record in place",
+        "Creates a copy with selected properties changed",
+        "Deletes a property",
+        "Converts the record to a class"
+      ],
+      "correctIndex": 1,
+      "explanation": "`with` performs non-destructive mutation: it copies the record and applies the changes.",
+      "optionExplanations": [
+        "Records are immutable when positional; `with` does not mutate the original.",
+        "Correct.",
+        "It does not delete properties.",
+        "The runtime type does not change."
+      ]
+    },
+    {
+      "prompt": "Two instances of a plain class with identical property values are compared with `==`. What is the result by default?",
+      "options": [
+        "`true`, because values are equal",
+        "`false`, because reference identity differs",
+        "It throws",
+        "It depends on the properties' order"
+      ],
+      "correctIndex": 1,
+      "explanation": "Classes use reference equality unless `Equals` and `operator ==` are overridden.",
+      "optionExplanations": [
+        "Value equality must be implemented or use a record.",
+        "Correct.",
+        "Comparison does not throw for normal classes.",
+        "Property order is irrelevant."
+      ]
+    },
+    {
+      "prompt": "Which is the best candidate for a struct?",
+      "options": [
+        "A large object graph with shared identity",
+        "A small immutable pair of coordinates",
+        "A database entity with a mutable primary key",
+        "A service that holds an HTTP client"
+      ],
+      "correctIndex": 1,
+      "explanation": "Small immutable values with cheap copies suit structs. Large or identity-bearing objects are usually classes.",
+      "optionExplanations": [
+        "Shared identity is the domain of classes.",
+        "Correct.",
+        "Entities are usually classes with identity.",
+        "Services belong in classes and are typically long-lived."
+      ]
+    }
+  ]
+}

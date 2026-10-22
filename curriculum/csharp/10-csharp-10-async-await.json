@@ -1,0 +1,83 @@
+{
+  "skill": "csharp",
+  "recallQuestions": [],
+  "id": "csharp-10-async-await",
+  "topic": "async",
+  "order": 10,
+  "title": "async/await without blocking",
+  "summary": "Model I/O as asynchronous work, keep the UI responsive, and avoid the classic deadlocks.",
+  "estimatedMinutes": 45,
+  "theory": "\nAsynchronous code exists to avoid holding a thread while waiting for I/O: a network call, a file read, a database query. `async`/`await` lets you write that code in a sequential style.\n\n```csharp\npublic async Task<string> FetchLessonAsync(HttpClient http, string url, CancellationToken ct)\n{\n    using var response = await http.GetAsync(url, ct);\n    response.EnsureSuccessStatusCode();\n    return await response.Content.ReadAsStringAsync(ct);\n}\n```\n\nKey facts:\n\n- An `async` method usually returns `Task`, `Task<T>`, or `ValueTask<T>`. `async void` is only for event handlers.\n- `await` asynchronously waits. It does **not** block the calling thread; the method is suspended and resumed when the awaited task completes.\n- Before the await completes, the method returns a `Task` to its caller. The caller can do other work or await it.\n- Exceptions in an awaited task are rethrown at the `await`. Unobserved exceptions in fire-and-forget tasks are dangerous.\n- Use `Task.WhenAll` to run independent operations concurrently:\n\n```csharp\nvar first = FetchLessonAsync(http, url1, ct);\nvar second = FetchLessonAsync(http, url2, ct);\nvar texts = await Task.WhenAll(first, second);\n```\n\nDo not start a task and then block on it with `.Result` or `.Wait()`. In UI and older ASP.NET contexts this can deadlock because the continuation needs the context that the blocked thread is holding. Await instead. In modern ASP.NET Core there is no synchronization context, but blocking still wastes threads and can cause starvation under load.\n\n**Cancellation** is cooperative. Pass a `CancellationToken` through I/O calls. Do not swallow `OperationCanceledException` unless you are deliberately treating cancellation as success.\n\n```csharp\nusing var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));\nvar text = await FetchLessonAsync(http, url, cts.Token);\n```\n\nAsync is not automatically parallel. Two sequential `await`s still run one after another. Start independent tasks before awaiting when concurrency is safe, and remember that shared mutable state needs synchronization in either case.\n\nA practical rule: async all the way up. Once a method does I/O, let its callers be async rather than hiding the wait behind `.Result`.\n",
+  "workedExample": {
+    "title": "Sequential vs concurrent awaits",
+    "markdown": "\nCompare two versions of a method that fetches two lessons.\n\n```csharp\n// Version A — sequential\nvar a = await FetchAsync(\"a\");\nvar b = await FetchAsync(\"b\");\n\n// Version B — concurrent\nvar taskA = FetchAsync(\"a\");\nvar taskB = FetchAsync(\"b\");\nvar results = await Task.WhenAll(taskA, taskB);\n```\n",
+    "steps": [
+      "In version A, the first await suspends until `a` completes. Only then does the method start fetching `b`. Total time is roughly the sum of both calls.",
+      "In version B, `FetchAsync(\"a\")` begins and returns a `Task<string>` immediately; the method does not await yet. The same happens for `b`.",
+      "`Task.WhenAll` waits for both tasks and returns their results in input order. The two I/O operations overlap, so total time is roughly the slower of the two.",
+      "If either task throws, the awaited `WhenAll` throws, exposing one of the exceptions. Use `await Task.WhenAll` and handle failures deliberately.",
+      "Concurrency is appropriate only when the operations are independent and the downstream system can handle the load. Do not fire unbounded parallelism."
+    ]
+  },
+  "bugFix": {
+    "title": "The blocking call inside async",
+    "prompt": "\nThis method is asynchronous, but it can deadlock in a UI app and it defeats the purpose of async. Find the problem.\n\n```csharp\npublic string LoadProfile(int userId)\n{\n    var response = _http.GetStringAsync($\"/users/{userId}\").Result;\n    return response;\n}\n```\n",
+    "language": "csharp",
+    "brokenCode": "public string LoadProfile(int userId)\n{\n    var response = _http.GetStringAsync($\"/users/{userId}\").Result;\n    return response;\n}",
+    "explanation": "`.Result` blocks the current thread while the I/O is in flight. In a synchronization-context environment, the continuation may need that same thread, producing a deadlock; even without a deadlock, a thread is wasted. Make the method `async Task<string>` and `await` the call: `public async Task<string> LoadProfileAsync(int userId, CancellationToken ct = default) => await _http.GetStringAsync($\"/users/{userId}\", ct);`. Async should flow through the call chain."
+  },
+  "explainPrompt": "Explain what `await` does to the current thread, and why `.Result` on an async task is dangerous. When would you use `Task.WhenAll`?",
+  "checkQuestions": [
+    {
+      "prompt": "What happens when an async method awaits an incomplete I/O task?",
+      "options": [
+        "The thread blocks until the task finishes",
+        "The method returns a Task to its caller and resumes later",
+        "The runtime creates a new OS thread for every await",
+        "The task runs synchronously on the same thread"
+      ],
+      "correctIndex": 1,
+      "explanation": "`await` suspends the method and returns control to the caller; a continuation resumes the method when the operation completes.",
+      "optionExplanations": [
+        "Awaiting is non-blocking for the calling thread.",
+        "Correct.",
+        "A new thread is not created per await; continuations are scheduled when needed.",
+        "I/O completion does not require the same thread to sit and wait."
+      ]
+    },
+    {
+      "prompt": "Why is `.Result` dangerous in async code?",
+      "options": [
+        "It returns the wrong type",
+        "It blocks a thread and can deadlock with a synchronization context",
+        "It cancels the task",
+        "It only works for value types"
+      ],
+      "correctIndex": 1,
+      "explanation": "Blocking on an async operation can deadlock and causes thread-pool starvation under load.",
+      "optionExplanations": [
+        "The type is usually correct; the waiting behavior is the problem.",
+        "Correct.",
+        "It does not cancel anything.",
+        "`Task<T>.Result` works for all `T`."
+      ]
+    },
+    {
+      "prompt": "When is `Task.WhenAll` a good choice?",
+      "options": [
+        "When operations are independent and can safely run concurrently",
+        "When each operation depends on the previous result",
+        "When you want to ignore exceptions",
+        "When you need a synchronous return value"
+      ],
+      "correctIndex": 0,
+      "explanation": "`WhenAll` overlaps independent asynchronous operations and waits for all of them.",
+      "optionExplanations": [
+        "Correct.",
+        "Dependent operations must be awaited in sequence.",
+        "`WhenAll` surfaces failures; it does not hide exceptions.",
+        "It returns an awaitable, not a synchronous value."
+      ]
+    }
+  ]
+}

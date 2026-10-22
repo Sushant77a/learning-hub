@@ -1,0 +1,84 @@
+{
+  "skill": "csharp",
+  "recallQuestions": [],
+  "id": "csharp-03-null-safety",
+  "topic": "nullability",
+  "order": 3,
+  "title": "Null safety you can actually use",
+  "summary": "Use nullable reference types and guard clauses to make 'no value' explicit instead of accidental.",
+  "estimatedMinutes": 35,
+  "theory": "\n`null` means “this variable does not refer to an object.” Calling a member on `null` throws `NullReferenceException`, one of the most common production failures.\n\nModern C# has **nullable reference types (NRT)**. They are a compile-time annotation system, not a runtime feature. With `<Nullable>enable</Nullable>` in the project:\n\n- `string` means “the compiler expects a non-null reference here.”\n- `string?` means “this may be null; check before dereferencing.”\n\nThe compiler warns when you assign `null` to a non-nullable variable, return a possibly-null value from a non-nullable method, or dereference a `string?` without checking. Warnings are guidance; they do not add runtime checks.\n\nUseful tools:\n\n```csharp\nstring? FindName(int id) => id == 1 ? \"Ada\" : null;\n\n// 1. Pattern check narrows the type\nvar name = FindName(2);\nif (name is not null)\n    Console.WriteLine(name.Length);\n\n// 2. Null-conditional and null-coalescing\nvar length = name?.Length ?? 0;\nvar display = name ?? \"unknown\";\n\n// 3. Guard clauses at the boundary\nvoid Greet(string name)\n{\n    ArgumentException.ThrowIfNullOrWhiteSpace(name);\n    Console.WriteLine($\"Hello, {name}\");\n}\n```\n\nUse `!` (the null-forgiving operator) only when you can justify it. It silences the compiler without changing behavior. A common legitimate case is a field initialized by a framework, where you know initialization happens before use.\n\nDistinguish three situations:\n\n1. **Absence is normal** — model it explicitly with `string?`, `int?`, or a result type. Make callers handle it.\n2. **Absence is a caller bug** — validate at the public boundary with `ArgumentNullException.ThrowIfNull`.\n3. **Absence is impossible but the compiler cannot prove it** — annotate carefully, or restructure so it can.\n\nNRT is most valuable at boundaries: public methods, API models, and data coming from files or the network. Inside a method, prefer early guards and non-null locals so the rest of the code reads cleanly.\n",
+  "workedExample": {
+    "title": "Make an unsafe lookup safe",
+    "markdown": "\nThe original method throws on missing data and gives the caller no warning:\n\n```csharp\nstatic int LengthOf(string? text)\n{\n    return text.Length;\n}\n```\n\nRead the fix, then the steps explaining why each part matters.\n",
+    "steps": [
+      "The parameter is `string?`, so the compiler knows `text` may be null. `text.Length` produces a warning and can throw at run time.",
+      "Return a nullable result (`int?`) when absence has meaning, or define a deterministic fallback such as `0`. Do not silently pretend a missing string was empty unless that is truly the domain rule.",
+      "Option A, explicit absence: `static int? LengthOf(string? text) => text?.Length;`",
+      "Option B, fallback with a documented rule: `static int LengthOf(string? text) => text?.Length ?? 0;`",
+      "Option C, caller bug: `static int LengthOf(string text) { ArgumentNullException.ThrowIfNull(text); return text.Length; }` — the signature now promises non-null.",
+      "Whichever you choose, the type signature tells the truth. That is the core skill: make the possibility of null visible in the type, not hidden in a comment."
+    ]
+  },
+  "bugFix": {
+    "title": "The missing null check",
+    "prompt": "\nThis method is supposed to return a trimmed display name or `\"(anonymous)\"` when no name was supplied. It throws a `NullReferenceException` for missing names.\n\n```csharp\npublic static string DisplayName(string? name)\n{\n    return name.Trim().Length == 0 ? \"(anonymous)\" : name.Trim();\n}\n```\n\nFind the bug, fix it, and explain why the compiler was trying to warn you.\n",
+    "language": "csharp",
+    "brokenCode": "public static string DisplayName(string? name)\n{\n    return name.Trim().Length == 0 ? \"(anonymous)\" : name.Trim();\n}",
+    "explanation": "`name` may be null, so `name.Trim()` can throw before the length check ever runs. Guard first, then trim once: `if (string.IsNullOrWhiteSpace(name)) return \"(anonymous)\"; return name.Trim();`. The nullable annotation was correct; the code ignored it."
+  },
+  "explainPrompt": "Explain the difference between a nullable reference type warning and a runtime null check. Why is `!` dangerous if used casually?",
+  "checkQuestions": [
+    {
+      "prompt": "What does `string?` mean in a nullable-enabled project?",
+      "options": [
+        "The string is stored on the heap instead of the stack",
+        "The reference may be null and callers should handle that",
+        "The string can be modified",
+        "The compiler inserts runtime null checks"
+      ],
+      "correctIndex": 1,
+      "explanation": "`string?` is an annotation: the value may be absent. It does not change the runtime representation or insert checks.",
+      "optionExplanations": [
+        "All strings are reference types and live on the heap regardless of annotation.",
+        "Correct.",
+        "Mutability is unrelated; strings are immutable.",
+        "No runtime checks are inserted by nullable reference types."
+      ]
+    },
+    {
+      "prompt": "Which expression provides a safe fallback when `name` may be null?",
+      "options": [
+        "`name.Length`",
+        "`name ?? \"unknown\"`",
+        "`name!`",
+        "`name.Value`"
+      ],
+      "correctIndex": 1,
+      "explanation": "The null-coalescing operator returns the right operand when the left is null.",
+      "optionExplanations": [
+        "This dereferences null and can throw.",
+        "Correct.",
+        "The null-forgiving operator only silences warnings.",
+        "`string` has no `.Value`; that belongs to nullable value types."
+      ]
+    },
+    {
+      "prompt": "When is the null-forgiving operator `!` appropriate?",
+      "options": [
+        "Whenever the compiler warns, to keep the build clean",
+        "When you have a real invariant the compiler cannot see, and you accept responsibility",
+        "Only on value types",
+        "As a replacement for `??`"
+      ],
+      "correctIndex": 1,
+      "explanation": "`!` is an assertion. It is reasonable when you can justify the invariant, and dangerous when used to silence a genuine bug.",
+      "optionExplanations": [
+        "Silencing warnings without evidence hides bugs.",
+        "Correct: it is an assertion of non-nullness.",
+        "It applies to nullable reference and value types.",
+        "It does not provide a fallback value."
+      ]
+    }
+  ]
+}

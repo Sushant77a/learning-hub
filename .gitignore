@@ -1,0 +1,45 @@
+# .NET build output
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+
+# Node / Vite
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Generated client bundle served by the API (rebuild with: npm --prefix client run build)
+src/LearningHub.Api/wwwroot/
+
+# Local runtime files
+logs/
+.run/
+*.log
+
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
+src/LearningHub.Api/appsettings.Development.json
+src/LearningHub.Api/appsettings.Local.json
+
+# Agent tooling (reinstall from skills-lock.json)
+.agents/
+
+# Local data and backups
+/backups/
+/data/
+
+# IDE and operating-system files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db

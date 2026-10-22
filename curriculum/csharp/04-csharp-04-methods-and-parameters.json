@@ -1,0 +1,88 @@
+{
+  "skill": "csharp",
+  "recallQuestions": [],
+  "id": "csharp-04-methods-and-parameters",
+  "topic": "methods",
+  "order": 4,
+  "title": "Methods, parameters, and the ref/out distinction",
+  "summary": "Understand exactly what a method receives, what it can change, and how to design clear signatures.",
+  "estimatedMinutes": 40,
+  "theory": "\nA method is a named block with a signature: name, parameter types, and return type. Overloading lets several methods share a name when their parameter lists differ.\n\n```csharp\nint Add(int a, int b) => a + b;\ndouble Add(double a, double b) => a + b;\n```\n\nBy default, arguments are passed **by value**. For a value type, that means a copy of the value; for a reference type, a copy of the reference. The method can mutate the object a reference points to, but it cannot reassign the caller's variable.\n\nC# adds modifiers for the cases where copying is not what you want:\n\n| Modifier | Meaning |\n|---|---|\n| `ref` | The caller's variable is passed by reference; the method may read and write it. It must be initialized first. |\n| `out` | The method must assign the parameter before returning; used for multiple results and `Try...` patterns. |\n| `in` | Read-only reference; avoids copying a large struct while promising not to modify it. |\n\n```csharp\nvoid Increment(ref int value) => value++;\n\nbool TryParsePositive(string text, out int value)\n{\n    if (int.TryParse(text, out value) && value > 0)\n        return true;\n    value = 0;\n    return false;\n}\n```\n\nCall sites are explicit:\n\n```csharp\nvar number = 4;\nIncrement(ref number);              // number is 5\n\nif (TryParsePositive(\"42\", out var parsed))\n    Console.WriteLine(parsed);       // 42\n```\n\nOptional parameters must come after required ones. Named arguments make call sites readable, especially with booleans:\n\n```csharp\nvoid Configure(int retries = 3, bool verbose = false) { }\nConfigure(verbose: true);\n```\n\nPrefer returning a value over mutating through `ref` when both are reasonable. Use `out` for the `Try...` convention, `ref` when in-place mutation is genuinely the point, and `in` sparingly for large structs. Clear signatures come from choosing the least surprising mechanism.\n",
+  "workedExample": {
+    "title": "Build a safe parser with `out`",
+    "markdown": "\nWe want a method that parses a positive integer and reports failure without throwing.\n\n```csharp\nstatic bool TryParsePositive(string text, out int value)\n{\n    value = 0;\n    if (!int.TryParse(text, out var parsed))\n        return false;\n    if (parsed <= 0)\n        return false;\n    value = parsed;\n    return true;\n}\n```\n\nTrace the call `TryParsePositive(\"-3\", out var n)`.\n",
+    "steps": [
+      "`value` is an `out` parameter. The method is required to assign it on every path, so it starts by assigning `0`.",
+      "`int.TryParse(\"-3\", out var parsed)` succeeds: `parsed` is `-3`.",
+      "The positivity check fails, so the method returns `false` without overwriting `value`.",
+      "Back at the call site, `TryParsePositive` returns `false`. The variable `n` is definitely assigned to `0`, but a well-written caller only uses it when the result is `true`.",
+      "The pattern separates success from the value, avoiding exceptions for expected invalid input. That is why `TryParse` exists alongside `Parse`."
+    ]
+  },
+  "task": {
+    "title": "Implement `TryParsePositive`",
+    "prompt": "\nWrite a method with this signature:\n\n```csharp\nstatic bool TryParsePositive(string text, out int value)\n```\n\nIt should return `true` and set `value` only when `text` is a valid integer greater than zero. Otherwise it returns `false` and sets `value` to `0`. Do not throw for invalid input.\n\nUse the `out` parameter correctly on every path.\n",
+    "language": "csharp",
+    "starterCode": "static bool TryParsePositive(string text, out int value)\n{\n    // Your code here. Remember: out parameters must be assigned on every path.\n    throw new NotImplementedException();\n}",
+    "solution": "static bool TryParsePositive(string text, out int value)\n{\n    value = 0;\n    return int.TryParse(text, out var parsed) && parsed > 0 && (value = parsed) > 0;\n}",
+    "requirements": [
+      "The method compiles with an out parameter assigned on every path.",
+      "Invalid text, zero, and negative numbers return false.",
+      "A valid positive number is returned through value."
+    ]
+  },
+  "explainPrompt": "Explain why `out` parameters must be assigned on every path, and when you would choose `ref` instead of returning a value.",
+  "checkQuestions": [
+    {
+      "prompt": "What does passing an argument by value mean for a reference type?",
+      "options": [
+        "The method gets a copy of the object",
+        "The method gets a copy of the reference, but can mutate the same object",
+        "The method may reassign the caller's variable",
+        "The object becomes immutable"
+      ],
+      "correctIndex": 1,
+      "explanation": "The reference is copied, so the method can mutate the shared object through it, but reassigning the parameter affects only the copy of the reference.",
+      "optionExplanations": [
+        "Objects are not copied unless explicitly cloned.",
+        "Correct.",
+        "Reassigning the parameter only changes the local reference.",
+        "Passing by value does not make the object immutable."
+      ]
+    },
+    {
+      "prompt": "Which statement about `out` parameters is required by the compiler?",
+      "options": [
+        "They must be initialized by the caller",
+        "They must be assigned by the method before it returns",
+        "They can only be used with value types",
+        "They must be the last parameter"
+      ],
+      "correctIndex": 1,
+      "explanation": "The compiler enforces definite assignment on every return path for `out` parameters.",
+      "optionExplanations": [
+        "The caller does not need to initialize an `out` argument when using `out var`.",
+        "Correct.",
+        "They work with reference types too.",
+        "They can appear anywhere, though convention places them last."
+      ]
+    },
+    {
+      "prompt": "Which call is valid for `void Configure(int retries = 3, bool verbose = false)`?",
+      "options": [
+        "`Configure(verbose: true)`",
+        "`Configure(true)`",
+        "`Configure(verbose = true)`",
+        "`Configure(retries: )`"
+      ],
+      "correctIndex": 0,
+      "explanation": "Named arguments may skip optional parameters. The others are invalid syntax or wrong types.",
+      "optionExplanations": [
+        "Correct.",
+        "The first parameter is `int`; a bool does not fit.",
+        "This is an assignment expression, not named-argument syntax.",
+        "A named argument still needs a value."
+      ]
+    }
+  ]
+}

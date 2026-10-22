@@ -1,0 +1,102 @@
+{
+  "areas": [
+    { "name": "Languages", "order": 1 },
+    { "name": "Computer Science", "order": 2 },
+    { "name": "Web & APIs", "order": 3 },
+    { "name": "Data & AI", "order": 4 },
+    { "name": "Infrastructure", "order": 5 },
+    { "name": "My skills", "order": 6 }
+  ],
+  "skills": [
+    {
+      "id": "csharp",
+      "name": "C#",
+      "area": "Languages",
+      "description": "The language you will use every day: types, objects, generics, LINQ and async.",
+      "directory": "csharp",
+      "dsa": false,
+      "dsaTopics": []
+    },
+    {
+      "id": "dsa",
+      "name": "Data Structures & Algorithms",
+      "area": "Computer Science",
+      "description": "The reasoning layer under every efficient program, taught one topic at a time.",
+      "directory": "dsa",
+      "dsa": true,
+      "dsaTopics": [
+        "big-o",
+        "arrays",
+        "strings",
+        "hash-maps",
+        "linked-lists",
+        "stacks",
+        "queues",
+        "recursion",
+        "trees",
+        "binary-search-trees",
+        "heaps",
+        "graphs",
+        "sorting",
+        "searching",
+        "dynamic-programming"
+      ]
+    },
+    {
+      "id": "linq",
+      "name": "LINQ",
+      "area": "Languages",
+      "description": "Querying collections with composable operators and deferred execution.",
+      "dsa": false,
+      "dsaTopics": []
+    },
+    {
+      "id": "async-await",
+      "name": "async/await",
+      "area": "Languages",
+      "description": "Asynchronous C#: Task, cancellation, concurrency and safe awaiting.",
+      "dsa": false,
+      "dsaTopics": []
+    },
+    {
+      "id": "aspnet-core",
+      "name": "ASP.NET Core",
+      "area": "Web & APIs",
+      "description": "Building HTTP APIs and web apps on .NET.",
+      "dsa": false,
+      "dsaTopics": []
+    },
+    {
+      "id": "sql",
+      "name": "SQL",
+      "area": "Data & AI",
+      "description": "Relational thinking, joins, indexes and query plans.",
+      "dsa": false,
+      "dsaTopics": []
+    },
+    {
+      "id": "embeddings",
+      "name": "Embeddings",
+      "area": "Data & AI",
+      "description": "Turning meaning into vectors, similarity, and retrieval trade-offs.",
+      "dsa": false,
+      "dsaTopics": []
+    },
+    {
+      "id": "rag",
+      "name": "RAG",
+      "area": "Data & AI",
+      "description": "Retrieval-augmented generation: chunking, retrieval, grounding and evaluation.",
+      "dsa": false,
+      "dsaTopics": []
+    },
+    {
+      "id": "nginx",
+      "name": "Nginx",
+      "area": "Infrastructure",
+      "description": "Reverse proxying, static serving, TLS and configuration fundamentals.",
+      "dsa": false,
+      "dsaTopics": []
+    }
+  ]
+}

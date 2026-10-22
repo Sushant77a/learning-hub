@@ -1,0 +1,83 @@
+{
+  "skill": "csharp",
+  "recallQuestions": [],
+  "id": "csharp-08-collections",
+  "topic": "collections",
+  "order": 8,
+  "title": "Collections and IEnumerable",
+  "summary": "Pick the right collection for the access pattern, and understand when enumeration is lazy.",
+  "estimatedMinutes": 40,
+  "theory": "\nC# collections differ in the operations they make cheap. Choosing well is a design decision, not a matter of habit.\n\n| Type | Best at | Watch out for |\n|---|---|---|\n| `T[]` | Fixed-size, index access | Cannot grow |\n| `List<T>` | Append, index access, iteration | Removing from the middle is O(n) |\n| `Dictionary<TKey,TValue>` | Key lookup, insert, delete | Unordered; keys must have sensible equality |\n| `HashSet<T>` | Membership and uniqueness | No indexing |\n| `Queue<T>` | First-in, first-out | No random access |\n| `Stack<T>` | Last-in, first-out | No random access |\n\n`List<T>` is backed by an array. When it runs out of capacity, it allocates a larger array and copies. That is why appending is *amortized* O(1), while an individual append can be O(n).\n\n```csharp\nvar lessons = new List<string> { \"types\", \"collections\" };\nlessons.Add(\"linq\");\nforeach (var lesson in lessons)\n    Console.WriteLine(lesson);\n```\n\n`IEnumerable<T>` is the abstraction for “something you can iterate.” It is lazy: a LINQ query does not execute until you enumerate it.\n\n```csharp\nIEnumerable<int> Evens(IEnumerable<int> source)\n{\n    foreach (var n in source)\n        if (n % 2 == 0) yield return n;\n}\n\nvar numbers = new List<int> { 1, 2, 3, 4 };\nvar evens = Evens(numbers); // nothing has run yet\nnumbers.Add(6);\nforeach (var n in evens) Console.WriteLine(n); // 2, 4, 6\n```\n\nThe iterator sees the list at enumeration time. This is powerful, but it also means:\n\n- A sequence can change between creation and enumeration.\n- Enumerating the same lazy query twice can perform the work twice.\n- You cannot modify a collection while a `foreach` is enumerating it. `List<T>` throws `InvalidOperationException` when its version changes.\n\nTo mutate while iterating, iterate over a copy or collect the items to remove first:\n\n```csharp\nforeach (var lesson in lessons.ToList())\n    if (lesson.StartsWith(\"old\"))\n        lessons.Remove(lesson);\n```\n\nUse `IReadOnlyList<T>` in method parameters when you only read. Return the most general type the caller needs: `IReadOnlyList<T>` for indexed reading, `IEnumerable<T>` for streaming.\n",
+  "workedExample": {
+    "title": "Remove while iterating, safely",
+    "markdown": "\nThis code looks reasonable, but it throws when it removes the first item:\n\n```csharp\nvar topics = new List<string> { \"old-basics\", \"arrays\", \"old-notes\", \"strings\" };\nforeach (var topic in topics)\n{\n    if (topic.StartsWith(\"old\"))\n        topics.Remove(topic);\n}\n```\n",
+    "steps": [
+      "`foreach` asks the list for an enumerator. The enumerator tracks a version number.",
+      "When `Remove` changes the list, the version changes. The next `MoveNext` detects the mismatch and throws `InvalidOperationException`.",
+      "Removing during enumeration is not a quirk of `List<T>`; it protects you from skipping or revisiting elements unpredictably.",
+      "Fix one: iterate over a snapshot: `foreach (var topic in topics.ToList())`. Removing from `topics` no longer affects the enumerator over the copy.",
+      "Fix two: remove by index from the end, or use `RemoveAll(t => t.StartsWith(\"old\"))`, which is explicit about mutating the collection."
+    ]
+  },
+  "bugFix": {
+    "title": "The collection that changed while being read",
+    "prompt": "\nThis method is meant to delete every completed lesson. It crashes on the first removal.\n\n```csharp\npublic static void RemoveCompleted(List<string> lessonIds, HashSet<string> completed)\n{\n    foreach (var id in lessonIds)\n    {\n        if (completed.Contains(id))\n            lessonIds.Remove(id);\n    }\n}\n```\n\nFix it and explain the exception.\n",
+    "language": "csharp",
+    "brokenCode": "public static void RemoveCompleted(List<string> lessonIds, HashSet<string> completed)\n{\n    foreach (var id in lessonIds)\n    {\n        if (completed.Contains(id))\n            lessonIds.Remove(id);\n    }\n}",
+    "explanation": "The `foreach` enumerator is invalidated when the list is modified, so the next `MoveNext` throws `InvalidOperationException`. Use `lessonIds.RemoveAll(completed.Contains)`, or iterate over a snapshot such as `lessonIds.ToList()`. `RemoveAll` is preferable here because it states the intent and performs one pass."
+  },
+  "explainPrompt": "Explain deferred execution with `IEnumerable<T>`. What can go wrong if you enumerate the same query twice?",
+  "checkQuestions": [
+    {
+      "prompt": "Which collection is the best default for fast lookup by a unique key?",
+      "options": [
+        "`List<T>`",
+        "`Dictionary<TKey,TValue>`",
+        "`Queue<T>`",
+        "`T[]`"
+      ],
+      "correctIndex": 1,
+      "explanation": "A dictionary provides average O(1) lookup by key. A list requires a scan.",
+      "optionExplanations": [
+        "A list lookup is O(n) unless you know the index.",
+        "Correct.",
+        "A queue is for FIFO processing, not key lookup.",
+        "An array lookup by index is O(1), but finding by key requires a scan."
+      ]
+    },
+    {
+      "prompt": "Why does modifying a `List<T>` inside `foreach` throw?",
+      "options": [
+        "The list becomes read-only",
+        "The enumerator detects a version change and invalidates itself",
+        "The loop variable is immutable",
+        "`foreach` copies the entire list"
+      ],
+      "correctIndex": 1,
+      "explanation": "List enumerators check a version field; mutation invalidates the enumerator to prevent undefined traversal.",
+      "optionExplanations": [
+        "The list is not made read-only.",
+        "Correct.",
+        "The loop variable is read-only, but that is a separate rule.",
+        "`foreach` does not copy the list."
+      ]
+    },
+    {
+      "prompt": "When does a LINQ `Where` query over a list actually filter items?",
+      "options": [
+        "When `Where` is called",
+        "When the query is enumerated",
+        "When the source list is constructed",
+        "At compile time"
+      ],
+      "correctIndex": 1,
+      "explanation": "LINQ operators build a pipeline. Execution is deferred until enumeration or materialization.",
+      "optionExplanations": [
+        "`Where` creates an iterator; it does not filter immediately.",
+        "Correct.",
+        "The source is independent of the query.",
+        "Filtering is a runtime operation."
+      ]
+    }
+  ]
+}

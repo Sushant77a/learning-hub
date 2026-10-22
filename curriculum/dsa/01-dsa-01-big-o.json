@@ -1,0 +1,115 @@
+{
+  "id": "dsa-01-big-o",
+  "skill": "dsa",
+  "topic": "big-o",
+  "order": 1,
+  "title": "Big-O: reasoning about growth",
+  "summary": "Count the work an algorithm does as input grows, then keep only what dominates.",
+  "estimatedMinutes": 45,
+  "theory": "\nBig-O describes how an algorithm's cost **grows** as the input size grows. It is not a stopwatch measurement. It answers: if I double `n`, roughly what happens to the work?\n\nWe count the dominant operations — comparisons, assignments, array accesses, loop iterations — as a function of `n`, then discard constants and lower-order terms.\n\n```csharp\nint Sum(int[] values)\n{\n    var total = 0;                 // 1\n    foreach (var value in values) // n iterations\n        total += value;            // constant per iteration\n    return total;                  // 1\n}\n```\n\nThe exact count is `n + 2` operations. Big-O keeps the fastest-growing term and drops constants: **O(n)**.\n\nCommon growth rates, from better to worse:\n\n| Complexity | Name | Typical example |\n|---|---|---|\n| O(1) | constant | array index, hash lookup (average) |\n| O(log n) | logarithmic | binary search, balanced tree lookup |\n| O(n) | linear | one pass over an array |\n| O(n log n) | linearithmic | comparison sorting |\n| O(n²) | quadratic | nested loops over the same input |\n| O(2ⁿ) | exponential | naive subset enumeration |\n\nRules of thumb:\n\n1. **Sequential loops add.** Two separate loops of `n` are O(n), not O(2n) in Big-O — the constant disappears.\n2. **Nested loops multiply.** A loop of `n` containing a loop of `m` is O(n · m). If both are `n`, it is O(n²).\n3. **Halving the input each step is logarithmic.** Binary search throws away half the remaining range each time, giving O(log n).\n4. **The input matters.** A loop over every element of a string of length `n` is O(n) regardless of how many bytes each character takes.\n\nBig-O usually describes the **worst case**, but not always. Hash map lookup is average O(1) and worst-case O(n) when many keys collide. Quicksort is average O(n log n) and worst-case O(n²). State which case you mean.\n\n**Space complexity** counts extra memory beyond the input. A single accumulator is O(1) extra space. Copying the array is O(n). Recursion uses stack space proportional to the depth of calls.\n\nThe skill is not memorizing a table. It is reading code and asking: *which loop depends on the input size, and how many times does the work happen?*\n",
+  "workedExample": {
+    "title": "Count a nested loop",
+    "markdown": "\n```csharp\nint CountPairs(int[] values)\n{\n    var count = 0;\n    for (var i = 0; i < values.Length; i++)\n    {\n        for (var j = i + 1; j < values.Length; j++)\n        {\n            if (values[i] == values[j])\n                count++;\n        }\n    }\n    return count;\n}\n```\n\nDetermine the time and space complexity.\n",
+    "steps": [
+      "Let `n = values.Length`. The outer loop runs `n` times.",
+      "For a fixed `i`, the inner loop runs from `i + 1` to `n - 1`, which is `n - 1 - i` iterations.",
+      "Total iterations: `(n - 1) + (n - 2) + ... + 1 + 0 = n(n - 1)/2`.",
+      "Expand: `(n² - n)/2`. The dominant term is `n²`; constants and lower-order terms are dropped. Time complexity: **O(n²)**.",
+      "The only extra variables are `i`, `j`, and `count`; no array or collection is allocated. Extra space: **O(1)**.",
+      "Note that the loop still performs the full pair scan even after it could stop early. Big-O describes the code as written, including that wasted work."
+    ]
+  },
+  "explainPrompt": "Explain why two separate O(n) loops are O(n) rather than O(n²), and why a nested loop over the same data is usually O(n²).",
+  "checkQuestions": [
+    {
+      "prompt": "What is the time complexity of a single loop over an array of length `n` that performs constant work per iteration?",
+      "options": [
+        "O(1)",
+        "O(log n)",
+        "O(n)",
+        "O(n²)"
+      ],
+      "correctIndex": 2,
+      "explanation": "The work grows linearly with the number of elements.",
+      "optionExplanations": [
+        "Constant time means the work does not depend on `n`.",
+        "O(log n) would require halving the work each step.",
+        "Correct.",
+        "That would require nested loops over the input."
+      ]
+    },
+    {
+      "prompt": "Which of these is the correct simplification of `3n² + 5n + 7` in Big-O?",
+      "options": [
+        "O(n²)",
+        "O(3n² + 5n)",
+        "O(n)",
+        "O(1)"
+      ],
+      "correctIndex": 0,
+      "explanation": "Big-O keeps the fastest-growing term and drops constant factors and lower-order terms.",
+      "optionExplanations": [
+        "Correct: `n²` dominates as `n` grows.",
+        "This is not simplified; constants and lower-order terms are removed.",
+        "`n²` grows faster than `n`.",
+        "The expression depends on `n`, so it is not constant."
+      ]
+    },
+    {
+      "prompt": "What does O(1) extra space mean?",
+      "options": [
+        "The algorithm uses no memory at all",
+        "The extra memory does not grow with the input size",
+        "The input is copied once",
+        "The algorithm uses exactly one variable"
+      ],
+      "correctIndex": 1,
+      "explanation": "O(1) space allows a fixed amount of extra state, independent of `n`.",
+      "optionExplanations": [
+        "Every function uses some memory; O(1) means a constant amount.",
+        "Correct.",
+        "Copying the input would be O(n) extra space.",
+        "It could use several variables, as long as the count is fixed."
+      ]
+    }
+  ],
+  "dsa": {
+    "topic": "big-o",
+    "complexityQuestions": [
+      {
+        "prompt": "State the time and space complexity of this method.",
+        "code": "int Max(int[] values)\n{\n    var best = values[0];\n    for (var i = 1; i < values.Length; i++)\n    {\n        if (values[i] > best)\n            best = values[i];\n    }\n    return best;\n}",
+        "language": "csharp",
+        "answer": "Time: O(n), Space: O(1)",
+        "explanation": "The loop visits each element once, so time is linear. Only `best` and `i` are allocated, so extra space is constant."
+      },
+      {
+        "prompt": "State the time and space complexity of building this frequency table.",
+        "code": "Dictionary<int, int> CountValues(int[] values)\n{\n    var counts = new Dictionary<int, int>();\n    foreach (var value in values)\n    {\n        counts[value] = counts.GetValueOrDefault(value) + 1;\n    }\n    return counts;\n}",
+        "language": "csharp",
+        "answer": "Time: O(n) average, Space: O(n)",
+        "explanation": "Each insertion/lookup is O(1) on average, for n elements. In the worst case of many hash collisions, lookups can degrade toward O(n) per operation, making the total O(n²). Extra space is O(n) for up to n distinct keys."
+      }
+    ],
+    "practice": [
+      {
+        "title": "Contains a duplicate",
+        "prompt": "\nGiven an integer array `values`, return `true` if any value appears more than once. Otherwise return `false`.\n\n```csharp\nbool ContainsDuplicate(int[] values)\n```\n\nAim for O(n) time. Explain why a sorted-input solution has a different trade-off.\n",
+        "hints": [
+          "Start with the straightforward approach: compare every pair. What complexity does that give?",
+          "Can a data structure tell you whether you have seen a value before in roughly constant time? A `HashSet<int>` can."
+        ],
+        "solution": "bool ContainsDuplicate(int[] values)\n{\n    var seen = new HashSet<int>();\n    foreach (var value in values)\n    {\n        if (!seen.Add(value))\n            return true;\n    }\n    return false;\n}"
+      },
+      {
+        "title": "Count pairs with a target sum",
+        "prompt": "\nGiven a sorted array `values` and an integer `target`, count how many pairs `(i, j)` with `i < j` satisfy `values[i] + values[j] == target`.\n\n```csharp\nint CountPairs(int[] values, int target)\n```\n\nTarget O(n) time and O(1) extra space, exploiting the sorted order.\n",
+        "hints": [
+          "With two indices at opposite ends, what happens to the sum if you move the left index right? What if you move the right index left?",
+          "If the current sum is too small, the left index must move right. If it is too large, the right index must move left. What should happen on equality, and how do duplicates affect the count?"
+        ],
+        "solution": "int CountPairs(int[] values, int target)\n{\n    var left = 0;\n    var right = values.Length - 1;\n    var count = 0;\n\n    while (left < right)\n    {\n        var sum = values[left] + values[right];\n        if (sum < target) left++;\n        else if (sum > target) right--;\n        else\n        {\n            var leftValue = values[left];\n            var rightValue = values[right];\n            var leftCount = 0;\n            while (left < right && values[left] == leftValue) { left++; leftCount++; }\n\n            var rightCount = 0;\n            if (leftValue == rightValue)\n            {\n                // All remaining equal values pair with each other.\n                count += leftCount * (leftCount - 1) / 2;\n                break;\n            }\n            while (left <= right && values[right] == rightValue) { right--; rightCount++; }\n            count += leftCount * rightCount;\n        }\n    }\n    return count;\n}"
+      }
+    ]
+  }
+}

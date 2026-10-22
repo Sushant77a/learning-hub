@@ -1,0 +1,23 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: learninghub-mysql
+    restart: unless-stopped
+    command: --mysqlx=0
+    environment:
+      MYSQL_ROOT_PASSWORD: learninghub_root
+      MYSQL_DATABASE: learninghub
+      MYSQL_USER: learninghub
+      MYSQL_PASSWORD: learninghub_dev
+    ports:
+      - "127.0.0.1:3310:3306"
+    volumes:
+      - learninghub_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-plearninghub_root"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  learninghub_mysql:

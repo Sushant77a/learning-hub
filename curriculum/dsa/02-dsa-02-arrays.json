@@ -1,0 +1,114 @@
+{
+  "id": "dsa-02-arrays",
+  "skill": "dsa",
+  "topic": "arrays",
+  "order": 2,
+  "title": "Arrays: direct access and expensive shifts",
+  "summary": "Understand why indexing is O(1), why insertion is not, and how two pointers exploit layout.",
+  "estimatedMinutes": 45,
+  "theory": "\nAn array is a contiguous block of elements of the same type. Because every element has the same size, the address of element `i` is computed directly:\n\n```\naddress(i) = baseAddress + i * elementSize\n```\n\nThat is why reading or writing `values[i]` is **O(1)**. The machine does not scan from the start; it computes the address.\n\nArrays have a fixed length. In C#, `int[]` is the low-level contiguous array. `List<T>` wraps an array and grows it: when full, it allocates a larger array (typically doubling) and copies the elements. Appending is amortized O(1), but an individual growth event is O(n).\n\nCosts to remember:\n\n| Operation | Array | Dynamic array (`List<T>`) |\n|---|---|---|\n| Read/write by index | O(1) | O(1) |\n| Append at end | — | Amortized O(1) |\n| Insert/remove at front or middle | O(n) | O(n) |\n| Search unsorted | O(n) | O(n) |\n| Search sorted (binary search) | O(log n) | O(log n) |\n\nInserting at position `k` requires shifting every element after `k` one slot to the right. Removing requires shifting left. This is why linked structures exist, and why bulk operations are often cheaper than repeated single inserts.\n\n**Two pointers** is a pattern that uses the array layout and ordering:\n\n```csharp\nbool HasPairSum(int[] sorted, int target)\n{\n    var left = 0;\n    var right = sorted.Length - 1;\n    while (left < right)\n    {\n        var sum = sorted[left] + sorted[right];\n        if (sum == target) return true;\n        if (sum < target) left++;\n        else right--;\n    }\n    return false;\n}\n```\n\nAfter sorting, each step discards a whole set of impossible pairs, so the scan is O(n). Sorting costs O(n log n), which dominates the total.\n\n**Prefix sums** answer range-sum queries in O(1) after O(n) preprocessing:\n\n```csharp\nvar prefix = new int[values.Length + 1];\nfor (var i = 0; i < values.Length; i++)\n    prefix[i + 1] = prefix[i] + values[i];\n\n// sum of values[from..to] inclusive\nvar rangeSum = prefix[to + 1] - prefix[from];\n```\n\n**In-place** algorithms modify the input using O(1) extra space. Reversing an array with two pointers is the canonical example: swap the ends and move inward.\n\nWhen you solve an array problem, ask:\n\n1. Is the input sorted, or can sorting help?\n2. Do I need to preserve order?\n3. Am I doing repeated work that a prefix structure or two pointers could remove?\n4. What is the cost of the shifts I am triggering?\n",
+  "workedExample": {
+    "title": "Reverse in place",
+    "markdown": "\nWrite a method that reverses `int[] values` using O(1) extra space.\n\n```csharp\nvoid Reverse(int[] values)\n{\n    var left = 0;\n    var right = values.Length - 1;\n    while (left < right)\n    {\n        (values[left], values[right]) = (values[right], values[left]);\n        left++;\n        right--;\n    }\n}\n```\n",
+    "steps": [
+      "Two pointers start at the ends. They move toward each other; each iteration handles one pair.",
+      "The tuple assignment swaps the two values without a temporary variable. It is evaluated before assignment, so it is safe.",
+      "After each swap, both pointers have handled their positions, so increment `left` and decrement `right`.",
+      "The loop stops when `left >= right`. The middle element of an odd-length array is already in place.",
+      "Each element is visited at most once, so the time is O(n). Only the two indices are allocated, so extra space is O(1)."
+    ]
+  },
+  "explainPrompt": "Why is indexing an array O(1) while inserting at the front is O(n)? Explain using the memory layout.",
+  "checkQuestions": [
+    {
+      "prompt": "Why is `values[i]` O(1) for an array?",
+      "options": [
+        "The runtime searches for the index from the beginning",
+        "The address is computed from the base address and element size",
+        "Arrays keep a dictionary of indices",
+        "The JIT caches every index access"
+      ],
+      "correctIndex": 1,
+      "explanation": "Contiguous elements and fixed size make address arithmetic constant time.",
+      "optionExplanations": [
+        "Scanning would be O(n).",
+        "Correct.",
+        "Arrays do not store an index dictionary.",
+        "Caching is not what makes the access constant time."
+      ]
+    },
+    {
+      "prompt": "What is the cost of inserting a new element at index 0 of a `List<T>` with n elements?",
+      "options": [
+        "O(1)",
+        "O(log n)",
+        "O(n)",
+        "O(n²)"
+      ],
+      "correctIndex": 2,
+      "explanation": "All existing elements must shift right by one position.",
+      "optionExplanations": [
+        "That would be appending when capacity is available, not front-insertion.",
+        "List operations are not logarithmic.",
+        "Correct.",
+        "A single insertion is not quadratic."
+      ]
+    },
+    {
+      "prompt": "What advantage does a prefix-sum array provide?",
+      "options": [
+        "It makes arbitrary range sums O(1) after O(n) preprocessing",
+        "It makes insertion at the front O(1)",
+        "It reduces memory usage to O(1)",
+        "It sorts the array"
+      ],
+      "correctIndex": 0,
+      "explanation": "Each range sum becomes a difference of two prefix values.",
+      "optionExplanations": [
+        "Correct.",
+        "Prefix sums do not change insertion costs.",
+        "The prefix array uses O(n) extra space.",
+        "Prefix sums do not sort."
+      ]
+    }
+  ],
+  "dsa": {
+    "topic": "arrays",
+    "complexityQuestions": [
+      {
+        "prompt": "State the time and space complexity of this operation on an array of length n.",
+        "code": "void InsertAtBeginning(int[] values, int count, int newValue)\n{\n    for (var i = count; i > 0; i--)\n        values[i] = values[i - 1];\n    values[0] = newValue;\n}",
+        "language": "csharp",
+        "answer": "Time: O(n), Space: O(1)",
+        "explanation": "Every one of the n existing elements shifts one position to the right. The shifting is done in place, so extra space is constant (the array must have capacity for one more element)."
+      },
+      {
+        "prompt": "State the time and space complexity of building this prefix-sum array.",
+        "code": "int[] BuildPrefix(int[] values)\n{\n    var prefix = new int[values.Length + 1];\n    for (var i = 0; i < values.Length; i++)\n        prefix[i + 1] = prefix[i] + values[i];\n    return prefix;\n}",
+        "language": "csharp",
+        "answer": "Time: O(n), Space: O(n)",
+        "explanation": "The loop runs once over n elements. The returned prefix array has n + 1 elements, which is O(n) extra space."
+      }
+    ],
+    "practice": [
+      {
+        "title": "Move zeroes",
+        "prompt": "\nGiven an integer array `values`, move every zero to the end while keeping the relative order of the non-zero elements. Do it in place with O(1) extra space.\n\n```csharp\nvoid MoveZeroes(int[] values)\n```\n",
+        "hints": [
+          "Think of a write pointer that marks where the next non-zero value belongs. A read pointer scans the array.",
+          "When the read pointer finds a non-zero value, write it at the write index and advance. After the scan, fill the rest with zeroes. Does this preserve relative order?"
+        ],
+        "solution": "void MoveZeroes(int[] values)\n{\n    var write = 0;\n    for (var read = 0; read < values.Length; read++)\n    {\n        if (values[read] != 0)\n        {\n            values[write++] = values[read];\n        }\n    }\n    while (write < values.Length)\n        values[write++] = 0;\n}"
+      },
+      {
+        "title": "Range sum queries",
+        "prompt": "\nYou are given an integer array and many queries of the form `(from, to)`. Each query asks for the sum of the elements between those inclusive indices. Design a structure that answers each query in O(1) after preprocessing.\n\n```csharp\npublic sealed class RangeSummer\n{\n    public RangeSummer(int[] values) { }\n    public int Sum(int from, int to) { }\n}\n```\n",
+        "hints": [
+          "What information would let you get the sum of `values[0..to]` without adding each element again?",
+          "Store cumulative sums in an array of length n + 1. Then `sum(from..to) = prefix[to + 1] - prefix[from]`. Check the indices carefully."
+        ],
+        "solution": "public sealed class RangeSummer\n{\n    private readonly int[] _prefix;\n\n    public RangeSummer(int[] values)\n    {\n        _prefix = new int[values.Length + 1];\n        for (var i = 0; i < values.Length; i++)\n            _prefix[i + 1] = _prefix[i] + values[i];\n    }\n\n    public int Sum(int from, int to)\n    {\n        if (from < 0 || to >= _prefix.Length - 1 || from > to)\n            throw new ArgumentOutOfRangeException();\n        return _prefix[to + 1] - _prefix[from];\n    }\n}"
+      }
+    ]
+  }
+}

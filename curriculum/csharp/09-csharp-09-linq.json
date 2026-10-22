@@ -1,0 +1,90 @@
+{
+  "skill": "csharp",
+  "recallQuestions": [],
+  "id": "csharp-09-linq",
+  "topic": "linq",
+  "order": 9,
+  "title": "LINQ: composing queries without leaving C#",
+  "summary": "Use deferred pipelines deliberately, keep queries readable, and know when to materialize.",
+  "estimatedMinutes": 40,
+  "theory": "\nLINQ is a set of extension methods over `IEnumerable<T>` (and `IQueryable<T>`). It lets you express filtering, projection, ordering, grouping, and aggregation as a pipeline:\n\n```csharp\nvar summaries = lessons\n    .Where(l => l.Order > 3)\n    .OrderBy(l => l.Title)\n    .Select(l => $\"{l.Order:00} — {l.Title}\")\n    .ToList();\n```\n\nThe method chain is equivalent to query syntax, which some people find clearer for joins and grouping:\n\n```csharp\nvar summaries =\n    from lesson in lessons\n    where lesson.Order > 3\n    orderby lesson.Title\n    select $\"{lesson.Order:00} — {lesson.Title}\";\n```\n\nMost LINQ is **deferred**. `Where`, `Select`, `OrderBy`, and `GroupBy` build a description of the work; nothing runs until you enumerate. `Count`, `Any`, `First`, `ToArray`, `ToList`, and `Sum` force execution. This has practical consequences:\n\n- A query can see changes made to the source after it was created.\n- Enumerating the same query twice can repeat expensive work. Materialize once if you need the results repeatedly.\n- `First()` on an empty sequence throws; `FirstOrDefault()` returns `default` (which may be null). Prefer `Any()` or a nullable result when absence is expected.\n- `OrderBy` is stable in LINQ to Objects, but do not rely on stability through databases without checking the provider.\n\nOperator families worth knowing:\n\n| Goal | Operators |\n|---|---|\n| Filter / project | `Where`, `Select`, `SelectMany` |\n| Order / page | `OrderBy`, `ThenBy`, `Skip`, `Take` |\n| Aggregate | `Count`, `Sum`, `Average`, `Min`, `Max`, `Aggregate` |\n| Test | `Any`, `All`, `Contains` |\n| Shape | `GroupBy`, `Distinct`, `Zip`, `Chunk` |\n| Join | `Join`, `GroupJoin`, `SelectMany` |\n\nPrefer a clear pipeline over a clever one. If a lambda needs a comment to explain its structure, a helper method or an explicit loop may be more readable. LINQ is not a performance guarantee; know the source (in-memory collection vs database query) and measure when it matters.\n",
+  "workedExample": {
+    "title": "Build a study summary",
+    "markdown": "\nGiven a list of lessons, produce the titles of unfinished lessons in order, grouped by topic, with a count per topic.\n\n```csharp\npublic sealed record LessonRow(string Title, string Topic, bool Completed);\n\nvar rows = new[]\n{\n    new LessonRow(\"Types\", \"fundamentals\", true),\n    new LessonRow(\"Null safety\", \"nullability\", false),\n    new LessonRow(\"Generics\", \"generics\", false),\n    new LessonRow(\"LINQ\", \"linq\", false)\n};\n\nvar summary = rows\n    .Where(r => !r.Completed)\n    .OrderBy(r => r.Topic)\n    .GroupBy(r => r.Topic)\n    .Select(g => new\n    {\n        Topic = g.Key,\n        Count = g.Count(),\n        Titles = g.Select(r => r.Title).ToList()\n    })\n    .ToList();\n```\n",
+    "steps": [
+      "`Where(r => !r.Completed)` keeps nullability, generics, and LINQ. The pipeline is deferred at this point.",
+      "`OrderBy(r => r.Topic)` defines an ordering. Ordering must materialize its input to sort, but the whole query is still not executed until final enumeration.",
+      "`GroupBy` produces one group per topic. Within each group, the original relative order is preserved for LINQ to Objects.",
+      "`Select` shapes each group into a summary object with a count and the matching titles.",
+      "`ToList()` forces execution once. Without it, each enumeration of `summary` would rerun the entire pipeline.",
+      "The result has three groups, each with one item in this example. If you add another unfinished generics lesson, the generics count becomes 2."
+    ]
+  },
+  "task": {
+    "title": "Filter and rank study items",
+    "prompt": "\nGiven a sequence of `StudyItem(string Title, int Minutes, int Priority)`, return the titles of the three items with the highest priority, breaking ties by fewer minutes. Only include items with `Priority >= 3`. Return `IReadOnlyList<string>`.\n\nWrite the query and materialize it once.\n",
+    "language": "csharp",
+    "starterCode": "public sealed record StudyItem(string Title, int Minutes, int Priority);\n\npublic static IReadOnlyList<string> TopStudyItems(IEnumerable<StudyItem> items)\n{\n    // Your LINQ pipeline here.\n    throw new NotImplementedException();\n}",
+    "solution": "public sealed record StudyItem(string Title, int Minutes, int Priority);\n\npublic static IReadOnlyList<string> TopStudyItems(IEnumerable<StudyItem> items)\n{\n    return items\n        .Where(i => i.Priority >= 3)\n        .OrderByDescending(i => i.Priority)\n        .ThenBy(i => i.Minutes)\n        .Take(3)\n        .Select(i => i.Title)\n        .ToList();\n}",
+    "requirements": [
+      "Items below priority 3 are excluded.",
+      "Higher priority comes first; equal priority puts shorter items first.",
+      "At most three titles are returned.",
+      "The result is materialized exactly once."
+    ]
+  },
+  "explainPrompt": "Explain deferred execution using one LINQ operator that is deferred and one that forces execution. What happens if you enumerate a deferred query twice?",
+  "checkQuestions": [
+    {
+      "prompt": "Which call forces a LINQ query to execute immediately?",
+      "options": [
+        "`Where`",
+        "`Select`",
+        "`ToList`",
+        "`OrderBy`"
+      ],
+      "correctIndex": 2,
+      "explanation": "`ToList` enumerates the sequence and stores the results. `Where` and `Select` are lazy; `OrderBy` builds an ordered iterator that still waits for enumeration.",
+      "optionExplanations": [
+        "`Where` returns a lazy iterator.",
+        "`Select` returns a lazy iterator.",
+        "Correct.",
+        "`OrderBy` builds an iterator but does not materialize until enumerated."
+      ]
+    },
+    {
+      "prompt": "What does `FirstOrDefault()` return for an empty sequence of reference type?",
+      "options": [
+        "An empty string",
+        "`null`",
+        "It throws `InvalidOperationException`",
+        "A new instance"
+      ],
+      "correctIndex": 1,
+      "explanation": "The default for a reference type is null. Use `First()` if absence should throw, or handle the null explicitly.",
+      "optionExplanations": [
+        "`default(string)` is null, not an empty string.",
+        "Correct.",
+        "`First()` throws; `FirstOrDefault()` does not.",
+        "No instance is created automatically."
+      ]
+    },
+    {
+      "prompt": "Why is enumerating the same deferred query twice potentially expensive?",
+      "options": [
+        "The query is cached forever",
+        "The pipeline re-runs against the source each time",
+        "LINQ locks the source on first use",
+        "The second enumeration always throws"
+      ],
+      "correctIndex": 1,
+      "explanation": "Unless materialized, each enumeration executes the operators again.",
+      "optionExplanations": [
+        "No permanent cache is created by default.",
+        "Correct.",
+        "Normal LINQ does not lock the source.",
+        "Re-enumeration is allowed but repeats work."
+      ]
+    }
+  ]
+}

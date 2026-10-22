@@ -1,0 +1,114 @@
+{
+  "id": "dsa-03-strings",
+  "skill": "dsa",
+  "topic": "strings",
+  "order": 3,
+  "title": "Strings: immutability, characters, and frequency",
+  "summary": "Treat strings as sequences with real costs, then use frequency maps and two pointers safely.",
+  "estimatedMinutes": 45,
+  "theory": "\nA C# `string` is an immutable sequence of UTF-16 code units. `Length` is the number of `char` values, not the number of user-perceived characters. Most Latin letters are one `char`; many emoji and some scripts require two `char`s (a surrogate pair), and grapheme clusters can be more complex still. For algorithm practice, assume ASCII unless the problem says otherwise, and be explicit when you rely on that assumption.\n\nBecause strings are immutable, every operation that appears to change one actually creates a new string:\n\n```csharp\nvar result = \"\";\nfor (var i = 0; i < 10_000; i++)\n    result += \"x\";\n```\n\nThis loop is O(n²) in the total number of characters: each concatenation copies the accumulated string. Use `StringBuilder` for repeated appends:\n\n```csharp\nvar builder = new StringBuilder();\nfor (var i = 0; i < 10_000; i++)\n    builder.Append('x');\nvar result = builder.ToString(); // O(n) total\n```\n\nIndexing `text[i]` is O(1). Iterating all characters is O(n). `Substring(start, length)` creates a new string and copies O(length) characters in modern .NET. Comparing two strings can short-circuit on the first difference but is O(n) worst case.\n\nCommon string techniques:\n\n1. **Frequency map.** Count characters, then compare counts. An array of 26 integers is cache-friendly for lowercase English; a `Dictionary<char,int>` handles arbitrary characters.\n2. **Two pointers.** Palindromes, reversing, and comparing from both ends often use `left`/`right` indices.\n3. **Sliding window.** Longest substring without repeats, fixed-size windows, and anagram search maintain a window with incremental counts.\n4. **Normalization.** Case folding, trimming, and Unicode normalization change the data; decide early whether they are part of the problem.\n\n```csharp\nbool IsAnagram(string a, string b)\n{\n    if (a.Length != b.Length) return false;\n    var counts = new int[26];\n    foreach (var c in a) counts[c - 'a']++;\n    foreach (var c in b)\n        if (--counts[c - 'a'] < 0) return false;\n    return true;\n}\n```\n\nThis is O(n) time and O(1) extra space for a fixed lowercase alphabet.\n\nWhen solving string problems, clarify: Is the alphabet fixed? Is case sensitivity relevant? Are Unicode characters in scope? What is the expected output for empty strings? These details are part of the algorithm, not a footnote.\n",
+  "workedExample": {
+    "title": "Check a palindrome with two pointers",
+    "markdown": "\nDetermine whether a string reads the same forwards and backwards, ignoring spaces, punctuation, and case.\n\n```csharp\nbool IsPalindrome(string text)\n{\n    var left = 0;\n    var right = text.Length - 1;\n    while (left < right)\n    {\n        while (left < right && !char.IsLetterOrDigit(text[left])) left++;\n        while (left < right && !char.IsLetterOrDigit(text[right])) right--;\n        if (char.ToLowerInvariant(text[left]) != char.ToLowerInvariant(text[right]))\n            return false;\n        left++;\n        right--;\n    }\n    return true;\n}\n```\n",
+    "steps": [
+      "Two indices begin at the ends. Each loop skips characters that are not letters or digits, because the problem says to ignore them.",
+      "After skipping, the characters at `left` and `right` are the next meaningful pair. Compare them case-insensitively.",
+      "A mismatch proves the string is not a palindrome, so return `false` immediately.",
+      "If they match, move both pointers inward. The process continues until the pointers meet or cross.",
+      "Each character is visited at most once, so the time is O(n). Only two integer indices are used, so extra space is O(1)."
+    ]
+  },
+  "explainPrompt": "Why is repeatedly concatenating strings in a loop O(n²), and how does StringBuilder avoid it?",
+  "checkQuestions": [
+    {
+      "prompt": "What is the time complexity of building a string with `+=` in a loop for n total characters?",
+      "options": [
+        "O(1)",
+        "O(n)",
+        "O(n²)",
+        "O(log n)"
+      ],
+      "correctIndex": 2,
+      "explanation": "Each concatenation copies the current accumulated string, so the total copied characters form 1 + 2 + ... + n.",
+      "optionExplanations": [
+        "Each operation allocates and copies.",
+        "Only the final length is n; the copying is cumulative.",
+        "Correct.",
+        "The work grows quadratically, not logarithmically."
+      ]
+    },
+    {
+      "prompt": "Why is a frequency array of size 26 useful for lowercase English letters?",
+      "options": [
+        "It sorts the string",
+        "It gives O(1) count updates and cache-friendly memory",
+        "It supports Unicode automatically",
+        "It makes strings mutable"
+      ],
+      "correctIndex": 1,
+      "explanation": "A fixed-size array maps each letter to a slot, making counts O(1) with no hashing overhead.",
+      "optionExplanations": [
+        "Counting does not sort.",
+        "Correct.",
+        "A 26-slot array does not cover arbitrary Unicode.",
+        "Strings remain immutable."
+      ]
+    },
+    {
+      "prompt": "What does `text.Length` represent in C#?",
+      "options": [
+        "The number of Unicode grapheme clusters",
+        "The number of UTF-16 code units",
+        "The number of bytes in memory",
+        "The number of words"
+      ],
+      "correctIndex": 1,
+      "explanation": "`string.Length` counts UTF-16 `char` values, which may differ from user-perceived characters.",
+      "optionExplanations": [
+        "Grapheme clusters can span multiple chars.",
+        "Correct.",
+        "UTF-16 uses two bytes per code unit, so bytes are not the same as Length.",
+        "Words are not counted by Length."
+      ]
+    }
+  ],
+  "dsa": {
+    "topic": "strings",
+    "complexityQuestions": [
+      {
+        "prompt": "State the time and space complexity of this method for a string of length n.",
+        "code": "string BuildStars(int n)\n{\n    var result = \"\";\n    for (var i = 0; i < n; i++)\n        result += \"*\";\n    return result;\n}",
+        "language": "csharp",
+        "answer": "Time: O(n²), Space: O(n)",
+        "explanation": "Each `+=` creates a new string and copies the previous characters, giving 1 + 2 + ... + n copies. The final string uses O(n) space, and old intermediate strings are garbage."
+      },
+      {
+        "prompt": "State the time complexity of this anagram check for strings of length n over a fixed lowercase alphabet.",
+        "code": "bool IsAnagram(string a, string b)\n{\n    if (a.Length != b.Length) return false;\n    var counts = new int[26];\n    foreach (var c in a) counts[c - 'a']++;\n    foreach (var c in b)\n        if (--counts[c - 'a'] < 0) return false;\n    return true;\n}",
+        "language": "csharp",
+        "answer": "Time: O(n), Space: O(1)",
+        "explanation": "Each string is scanned once. The count array has a fixed 26 slots, so extra space is constant with respect to n."
+      }
+    ],
+    "practice": [
+      {
+        "title": "Valid anagram",
+        "prompt": "\nGiven two strings `a` and `b`, return `true` if one is an anagram of the other. An anagram uses every character exactly the same number of times.\n\n```csharp\nbool IsAnagram(string a, string b)\n```\n\nAssume lowercase English letters for this exercise. State the complexity of your solution.\n",
+        "hints": [
+          "If the lengths differ, what can you conclude immediately?",
+          "Use a count array indexed by `c - 'a'`. Increment for the first string, decrement for the second, and fail if any count goes negative."
+        ],
+        "solution": "bool IsAnagram(string a, string b)\n{\n    if (a.Length != b.Length) return false;\n\n    var counts = new int[26];\n    foreach (var c in a) counts[c - 'a']++;\n    foreach (var c in b)\n    {\n        if (--counts[c - 'a'] < 0) return false;\n    }\n    return true;\n}\n\n// Time: O(n), Space: O(1) for the fixed 26-letter alphabet."
+      },
+      {
+        "title": "Longest common prefix",
+        "prompt": "\nGiven an array of strings, return the longest common prefix shared by all of them. Return an empty string if there is none.\n\n```csharp\nstring LongestCommonPrefix(string[] words)\n```\n",
+        "hints": [
+          "Start with the first word as the candidate prefix. Compare it with each subsequent word and shorten it until it matches.",
+          "A simple approach compares character by character at each position across all words. Stop at the first mismatch or when a word ends. What is the worst-case complexity?"
+        ],
+        "solution": "string LongestCommonPrefix(string[] words)\n{\n    if (words.Length == 0) return \"\";\n\n    var prefix = words[0];\n    for (var i = 1; i < words.Length; i++)\n    {\n        while (!words[i].StartsWith(prefix, StringComparison.Ordinal))\n        {\n            prefix = prefix[..^1];\n            if (prefix.Length == 0) return \"\";\n        }\n    }\n    return prefix;\n}\n\n// Worst case O(n * L), where L is the length of the shortest word.\n// Each shortening copies the prefix, so a character-by-character scan can be clearer in performance-critical code."
+      }
+    ]
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "skill": "csharp",
+  "recallQuestions": [],
+  "id": "csharp-07-generics",
+  "topic": "generics",
+  "order": 7,
+  "title": "Generics: type safety without duplication",
+  "summary": "Write once, keep compile-time types, and understand what constraints let the compiler guarantee.",
+  "estimatedMinutes": 40,
+  "theory": "\nGenerics let code work with many types while preserving compile-time type information. Without generics, you either duplicate code or fall back to `object`, which loses safety and can cause boxing.\n\n```csharp\npublic static T First<T>(IReadOnlyList<T> items)\n{\n    if (items.Count == 0) throw new InvalidOperationException(\"The list is empty.\");\n    return items[0];\n}\n\nvar number = First(new[] { 10, 20 });      // T is int\nvar name = First(new[] { \"Ada\", \"Grace\" }); // T is string\n```\n\nThe compiler infers `T` from the argument and enforces the return type. No cast is required.\n\n**Constraints** describe what `T` must support:\n\n```csharp\npublic static T Max<T>(IEnumerable<T> values) where T : IComparable<T>\n{\n    using var iterator = values.GetEnumerator();\n    if (!iterator.MoveNext()) throw new InvalidOperationException(\"Empty sequence.\");\n\n    var best = iterator.Current;\n    while (iterator.MoveNext())\n        if (iterator.Current.CompareTo(best) > 0)\n            best = iterator.Current;\n    return best;\n}\n```\n\nCommon constraints:\n\n- `where T : class` — reference type\n- `where T : struct` — non-nullable value type\n- `where T : notnull` — excludes nullable types\n- `where T : new()` — must have a public parameterless constructor\n- `where T : IComparable<T>` — must implement an interface\n- `where T : BaseClass` — must derive from a base class\n\nA generic type is the same idea for classes:\n\n```csharp\npublic sealed class Result<T>\n{\n    public bool IsSuccess { get; }\n    public T? Value { get; }\n    public string? Error { get; }\n\n    private Result(bool success, T? value, string? error)\n    {\n        IsSuccess = success;\n        Value = value;\n        Error = error;\n    }\n\n    public static Result<T> Ok(T value) => new(true, value, null);\n    public static Result<T> Fail(string error) => new(false, default, error);\n}\n```\n\nGenerics also avoid boxing. `List<int>` stores `int`s directly; a non-generic `ArrayList` stores `object` references and boxes each integer. For hot paths this matters.\n\nVariance is a more advanced topic. `IEnumerable<out T>` is covariant: an `IEnumerable<string>` can be used where `IEnumerable<object>` is expected, because it only produces values. Mutable collections cannot safely be covariant.\n",
+  "workedExample": {
+    "title": "Constraint-driven generics",
+    "markdown": "\nWe want a method that returns the largest value in a non-empty sequence.\n\n```csharp\nstatic T Max<T>(IEnumerable<T> values) where T : IComparable<T>\n{\n    using var e = values.GetEnumerator();\n    if (!e.MoveNext()) throw new InvalidOperationException(\"Empty sequence.\");\n\n    var best = e.Current;\n    while (e.MoveNext())\n    {\n        if (e.Current.CompareTo(best) > 0)\n            best = e.Current;\n    }\n    return best;\n}\n```\n",
+    "steps": [
+      "The constraint `IComparable<T>` tells the compiler that every `T` has `CompareTo(T)`. Without it, `CompareTo` would not compile.",
+      "`GetEnumerator()` works for any `IEnumerable<T>`: arrays, lists, and lazy sequences. The method does not need to know which one.",
+      "`MoveNext()` advances once. The first call checks for an empty sequence and initializes `best`.",
+      "Each later value is compared with `best`; the larger one wins. No boxing occurs for value types because `T` is concrete at the call site.",
+      "`Max(new[] { 3, 9, 4 })` infers `T = int`. `Max(new[] { \"b\", \"a\" })` infers `T = string`, and string implements `IComparable<string>`."
+    ]
+  },
+  "explainPrompt": "Why do generics preserve type safety better than using `object`? Give an example involving boxing or a cast.",
+  "checkQuestions": [
+    {
+      "prompt": "What does `where T : IComparable<T>` guarantee inside a generic method?",
+      "options": [
+        "`T` is a reference type",
+        "Every `T` has a `CompareTo(T)` method",
+        "`T` has a parameterless constructor",
+        "`T` is an integer"
+      ],
+      "correctIndex": 1,
+      "explanation": "The constraint exposes members of the interface on values of type `T`.",
+      "optionExplanations": [
+        "That would require `where T : class`.",
+        "Correct.",
+        "That requires `new()`.",
+        "`IComparable<T>` does not restrict `T` to integers."
+      ]
+    },
+    {
+      "prompt": "Why is `List<int>` generally better than a non-generic `ArrayList` for integers?",
+      "options": [
+        "It avoids boxing and keeps compile-time type safety",
+        "It uses less memory because it stores strings",
+        "It can hold more than one type",
+        "It runs on more operating systems"
+      ],
+      "correctIndex": 0,
+      "explanation": "Generic collections store values without boxing and expose typed members.",
+      "optionExplanations": [
+        "Correct.",
+        "`List<int>` stores integers, not strings.",
+        "`List<int>` is intentionally typed to one type parameter.",
+        "Both are part of .NET and platform support is unrelated."
+      ]
+    },
+    {
+      "prompt": "Which constraint would let a generic method call `new T()`?",
+      "options": [
+        "`where T : class`",
+        "`where T : struct`",
+        "`where T : new()`",
+        "`where T : notnull`"
+      ],
+      "correctIndex": 2,
+      "explanation": "`new()` requires a public parameterless constructor, enabling `new T()`.",
+      "optionExplanations": [
+        "`class` allows reference types but not necessarily a parameterless constructor.",
+        "`struct` implies a default constructor but does not allow the `new T()` constraint usage in the same way; the explicit constraint is `new()`.",
+        "Correct.",
+        "`notnull` says nothing about constructors."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "skill": "csharp",
+  "recallQuestions": [],
+  "id": "csharp-06-interfaces-inheritance",
+  "topic": "abstraction",
+  "order": 6,
+  "title": "Interfaces, inheritance, and composition",
+  "summary": "Design seams in your code with contracts, and prefer composition when inheritance stops earning its keep.",
+  "estimatedMinutes": 35,
+  "theory": "\nAn **interface** names a capability without supplying an implementation. Types that implement it promise to provide the members:\n\n```csharp\npublic interface ILessonRenderer\n{\n    string Render(string title, string body);\n}\n\npublic sealed class PlainTextRenderer : ILessonRenderer\n{\n    public string Render(string title, string body) => $\"{title}\\n\\n{body}\";\n}\n```\n\nThe caller can depend on `ILessonRenderer` rather than a concrete class. This is the basis of polymorphism and testability: in tests you can substitute a fake renderer without touching the production class.\n\nAn **abstract class** can contain state, constructors, and shared implementation. It expresses an “is a” relationship where some behavior is common:\n\n```csharp\npublic abstract class LessonStep\n{\n    public abstract string Name { get; }\n    public bool Completed { get; protected set; }\n    public void MarkComplete() => Completed = true;\n}\n```\n\nUse an interface when independent types should share a contract. Use an abstract base class when related types genuinely share implementation and identity.\n\n**Default interface methods** let an interface provide a fallback implementation. They are useful for evolving libraries, but they are not a replacement for normal class design and cannot access instance state.\n\n**Composition** means building behavior by holding collaborators:\n\n```csharp\npublic sealed class LessonNotifier\n{\n    private readonly IEmailSender _email;\n    public LessonNotifier(IEmailSender email) => _email = email;\n\n    public Task NotifyAsync(string address) => _email.SendAsync(address, \"Lesson ready\");\n}\n```\n\nThis is usually clearer than a deep inheritance tree. Inheritance couples a derived class to its base's implementation details; composition lets you replace a part.\n\nTwo guidelines that prevent most design pain:\n\n1. **Program to the smallest interface you need.** A consumer that only reads should not require a full repository with write methods.\n2. **Do not create an interface for every class by reflex.** Introduce a seam when there is a real second implementation, a testing need, or a boundary such as I/O. Otherwise the abstraction adds indirection without value.\n",
+  "workedExample": {
+    "title": "Refactor a conditional into polymorphism",
+    "markdown": "\nThis method grows every time a new output format is added:\n\n```csharp\nstring Render(string format, string title, string body)\n{\n    if (format == \"text\") return $\"{title}\\n\\n{body}\";\n    if (format == \"html\") return $\"<h1>{title}</h1><p>{body}</p>\";\n    if (format == \"markdown\") return $\"# {title}\\n\\n{body}\";\n    throw new NotSupportedException(format);\n}\n```\n\nModel the varying behavior as a contract instead.\n",
+    "steps": [
+      "Identify the axis of change: the rendering format. Keep the stable data (`title`, `body`) as method parameters.",
+      "Define `ILessonRenderer` with `string Render(string title, string body)`.",
+      "Implement `PlainTextRenderer`, `HtmlRenderer`, and `MarkdownRenderer`. Each class owns exactly one format.",
+      "The caller receives an `ILessonRenderer` and calls `Render` without a conditional. Adding a format means adding a class, not editing existing branches.",
+      "Select the implementation once at composition time — for example in a factory or dependency-injection registration. The Open/Closed idea is a consequence, not the goal: the goal is local, understandable change."
+    ]
+  },
+  "explainPrompt": "Explain the difference between an interface and an abstract class. Then describe a situation where composition is clearly better than inheritance.",
+  "checkQuestions": [
+    {
+      "prompt": "What can an abstract class do that a C# interface cannot (without default members)?",
+      "options": [
+        "Declare method signatures",
+        "Store instance fields and share implementation",
+        "Be implemented by multiple types",
+        "Be used as a parameter type"
+      ],
+      "correctIndex": 1,
+      "explanation": "Abstract classes can hold state and implementation. Interfaces traditionally declare contracts only, though default interface methods now allow limited implementation.",
+      "optionExplanations": [
+        "Both can declare members.",
+        "Correct.",
+        "Both can be implemented or derived by multiple types.",
+        "Both can be used as parameter types."
+      ]
+    },
+    {
+      "prompt": "Why is depending on an interface useful for testing?",
+      "options": [
+        "It makes the program run faster",
+        "A fake implementation can replace real I/O in a test",
+        "It removes the need for constructors",
+        "It makes all methods static"
+      ],
+      "correctIndex": 1,
+      "explanation": "A contract allows substituting a test double, isolating the code under test from slow or unreliable dependencies.",
+      "optionExplanations": [
+        "Interfaces do not inherently improve runtime speed.",
+        "Correct.",
+        "Interfaces do not affect constructor requirements.",
+        "Interfaces have nothing to do with static methods."
+      ]
+    },
+    {
+      "prompt": "What is a sign that composition may be better than inheritance?",
+      "options": [
+        "You want to reuse one method from a base class",
+        "The derived class is not genuinely a subtype and only needs some behavior",
+        "The base class has no methods",
+        "You need an abstract class"
+      ],
+      "correctIndex": 1,
+      "explanation": "Inheritance should model an is-a relationship with substitutability. Reusing a fragment of behavior is often better handled by a collaborator.",
+      "optionExplanations": [
+        "Reusing one method is a common misuse of inheritance; a collaborator is usually cleaner.",
+        "Correct.",
+        "An empty base class provides no reason for inheritance.",
+        "Abstract classes are one tool, not a goal."
+      ]
+    }
+  ]
+}

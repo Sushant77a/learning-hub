@@ -1,0 +1,76 @@
+{
+  "skill": "csharp",
+  "recallQuestions": [],
+  "id": "csharp-02-values-and-references",
+  "topic": "fundamentals",
+  "order": 2,
+  "title": "Values, references, and what assignment copies",
+  "summary": "Build the mental model that prevents a whole class of aliasing and mutation bugs.",
+  "estimatedMinutes": 35,
+  "theory": "\nEvery C# type is either a **value type** or a **reference type**. The distinction is about what a variable contains and what assignment copies.\n\nA **value type** variable contains the value itself. `int`, `double`, `bool`, `char`, `DateTime`, and every `struct` are value types. Assigning one to another copies the bits:\n\n```csharp\nstruct Point { public int X; }\nvar a = new Point { X = 1 };\nvar b = a;      // copy\nb.X = 9;\nConsole.WriteLine(a.X); // 1\n```\n\nA **reference type** variable contains a reference to an object. Classes, arrays, delegates, and records declared as classes are reference types. Assignment copies the **reference**, not the object:\n\n```csharp\nvar first = new List<int> { 1, 2 };\nvar second = first;   // same list\nsecond.Add(3);\nConsole.WriteLine(first.Count); // 3\n```\n\n`string` is a reference type but behaves unusually because it is **immutable**. Operations such as concatenation create a new string; they never edit the old one:\n\n```csharp\nvar name = \"Ada\";\nvar copy = name;\ncopy += \" Lovelace\";\nConsole.WriteLine(name); // Ada\nConsole.WriteLine(copy); // Ada Lovelace\n```\n\n`==` on strings compares characters, not references. `ReferenceEquals(name, copy)` would be false after the concatenation.\n\nTwo more consequences:\n\n1. **Default values.** `int` defaults to `0`, `bool` to `false`, reference-type fields to `null`. Local variables must be definitely assigned before use.\n2. **Mutable structs are easy to misuse.** Passing a struct to a method copies it. If the method mutates the parameter, the caller's value is unchanged unless you use `ref`. This is why most modern structs are small and immutable.\n\nThe stack/heap distinction is an implementation detail. The useful rule is semantic: **value types copy their data; reference types share an object.**\n",
+  "workedExample": {
+    "title": "Predict the output of three assignments",
+    "markdown": "\nRead the program and predict every printed line before revealing the steps.\n\n```csharp\nvar numbers = new[] { 10, 20 };\nvar alias = numbers;\nalias[0] = 99;\n\nvar count = 1;\nvar otherCount = count;\notherCount = 5;\n\nvar greeting = \"hi\";\nvar shouted = greeting;\nshouted = shouted.ToUpperInvariant();\n\nConsole.WriteLine(numbers[0]);\nConsole.WriteLine(alias[0]);\nConsole.WriteLine(count);\nConsole.WriteLine(greeting);\n```\n",
+    "steps": [
+      "`numbers` and `alias` are reference variables. `alias = numbers` copies the reference, so both point to the same array object.",
+      "`alias[0] = 99` mutates that shared array. Both `numbers[0]` and `alias[0]` are now `99`.",
+      "`count` and `otherCount` are integers, a value type. `otherCount = count` copies `1`; changing `otherCount` to `5` cannot affect `count`.",
+      "`greeting` and `shouted` initially reference the same string. `ToUpperInvariant()` creates a new string, and `shouted` is rebound to it. `greeting` still references `\"hi\"`.",
+      "Output: `99`, `99`, `1`, `hi`."
+    ]
+  },
+  "explainPrompt": "In your own words: why does changing a list through one variable show up through another, while changing an int through one variable does not?",
+  "checkQuestions": [
+    {
+      "prompt": "What is copied when a reference-type variable is assigned to another variable?",
+      "options": [
+        "The entire object",
+        "A reference to the same object",
+        "A deep clone of every field",
+        "Nothing; the assignment is ignored"
+      ],
+      "correctIndex": 1,
+      "explanation": "Assignment copies the reference value. Both variables then point at the same object, which is why mutation is visible through both.",
+      "optionExplanations": [
+        "Objects are not copied on assignment for classes.",
+        "Correct.",
+        "A deep clone requires an explicit operation such as a copy constructor or serialization.",
+        "Assignment does happen; it just copies the reference, not the object."
+      ]
+    },
+    {
+      "prompt": "Which statement about `string` is true?",
+      "options": [
+        "It is a value type, so concatenation mutates the original",
+        "It is a reference type and immutable, so operations create new strings",
+        "It is mutable only inside a `foreach`",
+        "It is a struct with a mutable char buffer"
+      ],
+      "correctIndex": 1,
+      "explanation": "`string` is a reference type whose contents cannot change. Methods return new strings.",
+      "optionExplanations": [
+        "String is a reference type; immutable operations return new instances.",
+        "Correct.",
+        "Iteration has nothing to do with mutability.",
+        "String is a sealed class, not a mutable struct."
+      ]
+    },
+    {
+      "prompt": "A method receives a `Point` struct parameter and sets `point.X = 10`. What does the caller see?",
+      "options": [
+        "The caller's point is unchanged, because the struct was copied",
+        "The caller's point is updated",
+        "The program fails to compile",
+        "The point becomes null"
+      ],
+      "correctIndex": 0,
+      "explanation": "Parameters are passed by value by default. For a struct, that means a copy; the caller needs `ref` to see the change.",
+      "optionExplanations": [
+        "Correct: structs are copied on pass-by-value.",
+        "That would require `ref` or `in`/`out` semantics with a mutable variable.",
+        "Mutating a struct parameter is legal.",
+        "Structs cannot be null unless wrapped in `Nullable<T>`."
+      ]
+    }
+  ]
+}

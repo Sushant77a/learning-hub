@@ -1,0 +1,77 @@
+{
+  "skill": "csharp",
+  "recallQuestions": [],
+  "id": "csharp-01-dotnet-csharp-runtime",
+  "topic": "fundamentals",
+  "order": 1,
+  "title": "C#, .NET, and what happens when you run code",
+  "summary": "Separate the language from the platform, then follow a program from source to running process.",
+  "estimatedMinutes": 30,
+  "theory": "\nC# and .NET are related, but they are not the same thing.\n\n**C# is a language.** It defines syntax and semantics: types, classes, methods, `foreach`, `async`, and so on. A C# file is just text until a compiler reads it.\n\n**.NET is a platform.** It gives you a runtime, a standard library, and a toolchain. The important pieces:\n\n- **SDK** — the tools: `dotnet build`, `dotnet run`, templates, the C# compiler.\n- **Runtime** — what executes your compiled program. It includes the **CLR** (Common Language Runtime).\n- **Base Class Library (BCL)** — `System.*` types such as `Console`, `List<T>`, `HttpClient`, `Task`.\n\nC# compiles to **Intermediate Language (IL)**, not directly to native machine code. At run time the CLR loads the IL and the JIT (just-in-time) compiler turns the methods you actually call into machine code for the current CPU and operating system. That is why the same `.dll` can run on Windows, Linux, or macOS when a compatible .NET runtime is installed.\n\nA minimal project has a project file and some code:\n\n```xml\n<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net10.0</TargetFramework>\n    <ImplicitUsings>enable</ImplicitUsings>\n  </PropertyGroup>\n</Project>\n```\n\n```csharp\n// Program.cs — top-level statements become the entry point\nConsole.WriteLine(\"Learning Hub\");\n```\n\n`ImplicitUsings` is why `Console` is visible without a `using System;` line. Under the hood the compiler still resolves it to `System.Console`. A `using` directive only imports names; it does not load a library at run time.\n\nWhen you type `dotnet run`, the CLI restores NuGet dependencies, compiles the project to IL, creates an executable host, starts the runtime, and invokes the generated entry point. `dotnet build` stops before running. `dotnet publish` prepares files for deployment, optionally with trimming or ahead-of-time compilation.\n\nThe practical mental model: **the compiler checks the shape of your program; the runtime supplies objects, memory, threads, and services; the JIT makes it fast on this machine.**\n",
+  "workedExample": {
+    "title": "Trace `dotnet run` in a console app",
+    "markdown": "\nSuppose the project contains only the `Program.cs` shown above. Trace what happens, in order, when you run `dotnet run`.\n",
+    "steps": [
+      "The CLI reads the `.csproj`, discovers the target framework (`net10.0`) and that this is an executable project.",
+      "NuGet restore resolves package references. A project with no packages still has the framework reference to the shared .NET runtime.",
+      "The C# compiler parses `Program.cs`, builds a syntax tree, checks types, and emits IL into a `.dll`. Top-level statements are rewritten into a synthesized `Program.Main` method.",
+      "The host starts the CLR. The CLR finds `Main`, loads referenced assemblies, and the JIT compiles `Main` to machine code for this CPU.",
+      "`Console.WriteLine` executes. `Console` lives in the BCL and eventually writes to the process's standard output — which your terminal is showing.",
+      "When `Main` returns, the process exits. Memory owned by the runtime is reclaimed by the operating system, even if the garbage collector never runs."
+    ]
+  },
+  "explainPrompt": "Explain the difference between the C# compiler, the CLR, and the JIT. Where does each one sit in the journey from a `.cs` file to output on screen?",
+  "checkQuestions": [
+    {
+      "prompt": "What does the C# compiler produce when it compiles a normal .NET project?",
+      "options": [
+        "Native machine code for the current CPU",
+        "Intermediate Language (IL) in an assembly",
+        "A JavaScript bundle",
+        "A running process"
+      ],
+      "correctIndex": 1,
+      "explanation": "The compiler emits IL into an assembly (a .dll or .exe). Native code is produced later, by the JIT, on the machine that runs it.",
+      "optionExplanations": [
+        "C# does not normally compile straight to machine code; that is the JIT's job.",
+        "Correct: assemblies contain IL plus metadata.",
+        "That describes a web front-end toolchain, not .NET.",
+        "Compiling and running are separate steps."
+      ]
+    },
+    {
+      "prompt": "Which statement best describes the CLR?",
+      "options": [
+        "It is the C# language specification.",
+        "It is the runtime that loads assemblies, manages memory, and executes IL.",
+        "It is a NuGet package manager.",
+        "It is the compiler's parser."
+      ],
+      "correctIndex": 1,
+      "explanation": "The CLR is the execution engine: loading, memory management, type safety, threads, and JIT compilation all live there.",
+      "optionExplanations": [
+        "The specification describes the language; the CLR executes compiled code.",
+        "Correct.",
+        "NuGet is a package manager and is not the runtime.",
+        "Parsing is a compiler step, not the runtime."
+      ]
+    },
+    {
+      "prompt": "Why can the same compiled .NET assembly run on Windows and Linux?",
+      "options": [
+        "Because IL is portable and each platform has a .NET runtime that JIT-compiles it",
+        "Because the compiler emits both Windows and Linux binaries",
+        "Because C# is interpreted line by line",
+        "Because Windows emulates Linux in .NET"
+      ],
+      "correctIndex": 0,
+      "explanation": "The assembly contains portable IL. A platform-specific runtime and JIT adapt it to the local OS and CPU.",
+      "optionExplanations": [
+        "Correct: portable IL plus a local runtime.",
+        "The compiler does not emit one binary per OS by default.",
+        "C# is not interpreted line by line; it is compiled to IL.",
+        "No emulation is required; .NET has native runtime builds per platform."
+      ]
+    }
+  ]
+}

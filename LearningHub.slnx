@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/LearningHub.Core/LearningHub.Core.csproj" />
+  <Project Path="src/LearningHub.Api/LearningHub.Api.csproj" />
+  <Project Path="src/LearningHub.Tests/LearningHub.Tests.csproj" />
+</Solution>
